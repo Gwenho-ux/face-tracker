@@ -881,95 +881,27 @@ const PhotoBooth = () => {
         }, 1000);
     };
 
-    // Capture screenshot - directly capture canvas with overlays
+    // Capture screenshot - simple method that works, then flip video in result
     const capturePhoto = async () => {
         setCurrentScreen('loading');
 
         try {
-            console.log('📸 Starting direct canvas capture...');
+            console.log('📸 Starting simple capture...');
 
-            if (!canvasRef.current || !captureAreaRef.current) {
-                console.error('❌ Canvas or capture area ref is null!');
-                throw new Error('Canvas or capture area not found');
+            if (!captureAreaRef.current) {
+                console.error('❌ Capture area ref is null!');
+                throw new Error('Capture area not found');
             }
 
-            // Get the canvas and capture area elements
-            const canvas = canvasRef.current;
-            const captureArea = captureAreaRef.current;
-            
-            // Create a new canvas for the final composite
-            const compositeCanvas = document.createElement('canvas');
-            const ctx = compositeCanvas.getContext('2d');
-            
-            // Set canvas size to match the displayed video canvas
-            compositeCanvas.width = canvas.width;
-            compositeCanvas.height = canvas.height;
-            
-            // Draw the mirrored video content
-            ctx.drawImage(canvas, 0, 0);
-            
-            // Get canvas display rect for mask positioning
-            const canvasRect = canvas.getBoundingClientRect();
-            const captureRect = captureArea.getBoundingClientRect();
-            
-            // Draw masks on top
-            for (const faceData of smoothFaces) {
-                try {
-                    // Load mask image
-                    const maskImg = new Image();
-                    const maskSrc = `/mask/mask${faceData.maskNumber}.png`;
-                    
-                    await new Promise((resolve, reject) => {
-                        maskImg.onload = resolve;
-                        maskImg.onerror = reject;
-                        maskImg.src = maskSrc;
-                    });
-                    
-                    // Calculate mask position relative to canvas
-                    const scaleX = compositeCanvas.width / canvasRect.width;
-                    const scaleY = compositeCanvas.height / canvasRect.height;
-                    
-                    const maskX = faceData.x * scaleX;
-                    const maskY = faceData.y * scaleY;
-                    const maskSize = faceData.size * Math.min(scaleX, scaleY);
-                    
-                    // Save context for rotation
-                    ctx.save();
-                    ctx.translate(maskX, maskY);
-                    ctx.rotate((faceData.rotation * Math.PI) / 180);
-                    ctx.globalAlpha = 0.95;
-                    
-                    // Draw mask centered at position
-                    ctx.drawImage(
-                        maskImg,
-                        -maskSize / 2,
-                        -maskSize / 2,
-                        maskSize,
-                        maskSize
-                    );
-                    
-                    ctx.restore();
-                } catch (maskError) {
-                    console.warn(`Failed to load mask${faceData.maskNumber}:`, maskError);
-                }
-            }
-            
-            // Add frame overlay if it exists
-            try {
-                const frameImg = new Image();
-                await new Promise((resolve, reject) => {
-                    frameImg.onload = resolve;
-                    frameImg.onerror = reject;
-                    frameImg.src = '/frame.png';
-                });
-                
-                // Draw frame at full canvas size
-                ctx.drawImage(frameImg, 0, 0, compositeCanvas.width, compositeCanvas.height);
-            } catch (frameError) {
-                console.warn('Frame overlay not found or failed to load:', frameError);
-            }
+            // Simple working capture - just like before
+            const canvas = await html2canvas(captureAreaRef.current, {
+                useCORS: true,
+                allowTaint: true,
+                scale: 1,
+                logging: false
+            });
 
-            const imageData = compositeCanvas.toDataURL('image/png');
+            const imageData = canvas.toDataURL('image/png');
             setCapturedImage(imageData);
 
             // Also set as video-only for the new result display
@@ -978,7 +910,7 @@ const PhotoBooth = () => {
             // Store current mask data for overlay in result (empty for now since we capture everything)
             setCapturedMaskData([]);
 
-            console.log('📸 Direct canvas capture successful!');
+            console.log('📸 Simple capture successful!');
 
             // Upload to Firebase (but don't let it block the UI)
             uploadToFirebase(imageData).catch(error => {
@@ -1237,11 +1169,11 @@ const PhotoBooth = () => {
                     position: 'relative',
                     width: 'min(95vw, calc(80vh * 16/9))', // Constrain by viewport
                     aspectRatio: '16/9',
-                    margin: '0 auto 20px',
+                    margin: '0 auto 0',
                     border: '6px solid #FFFFFF',
                     borderRadius: '25px',
                     overflow: 'hidden',
-                    backgroundColor: 'transparent',
+                    backgroundColor: '#000', // Match camera screen
                     boxShadow: '0 8px 30px rgba(214, 135, 163, 0.4), 0 0 0 3px #EE9ABF, 0 0 20px rgba(238, 154, 191, 0.3)'
                 }}
             >
@@ -1273,6 +1205,9 @@ const PhotoBooth = () => {
                 <canvas
                     ref={canvasRef}
                     style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
                         width: '100%',
                         height: '100%',
                         objectFit: 'cover',
@@ -1539,7 +1474,8 @@ const PhotoBooth = () => {
                         flexDirection: 'column',
                         alignItems: 'center',
                         gap: '2rem',
-                        flex: '1 1 300px'
+                        flex: '1 1 300px',
+                        alignSelf: 'flex-start'
                     }}>
                         {/* Display captured result (already mirrored from live video) */}
                         <img
@@ -1548,11 +1484,14 @@ const PhotoBooth = () => {
                             style={{
                                 maxWidth: '450px',
                                 width: '100%',
-                                aspectRatio: '16/9',
-                                objectFit: 'cover',
+                                height: 'auto',
                                 border: '8px solid #FFFFFF',
                                 borderRadius: '25px',
-                                boxShadow: '0 15px 40px rgba(238, 154, 191, 0.4), 0 0 0 4px #EE9ABF, 0 0 25px rgba(238, 154, 191, 0.3)'
+                                boxShadow: '0 15px 40px rgba(238, 154, 191, 0.4), 0 0 0 4px #EE9ABF, 0 0 25px rgba(238, 154, 191, 0.3)',
+                                display: 'block',
+                                margin: '0',
+                                padding: '0',
+                                verticalAlign: 'top'
                             }}
                         />
 
