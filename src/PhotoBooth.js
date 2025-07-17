@@ -413,7 +413,7 @@ const PhotoBooth = () => {
 
     // Photo booth flow states
     const [currentScreen, setCurrentScreen] = useState('camera'); // 'camera', 'countdown', 'loading', 'result'
-    const [countdown, setCountdown] = useState(3);
+    const [countdown, setCountdown] = useState(8);
     const [showShutter, setShowShutter] = useState(false);
     const [capturedVideoOnly, setCapturedVideoOnly] = useState(null); // Store video-only capture
     const [capturedMaskData, setCapturedMaskData] = useState([]); // Store mask positions for result
@@ -858,7 +858,7 @@ const PhotoBooth = () => {
     // Start photo capture with countdown
     const startPhotoCapture = () => {
         setCurrentScreen('countdown');
-        setCountdown(3);
+        setCountdown(8);
         startCountdown();
     };
 
