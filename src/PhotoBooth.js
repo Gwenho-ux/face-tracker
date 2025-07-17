@@ -413,7 +413,7 @@ const PhotoBooth = () => {
 
     // Photo booth flow states
     const [currentScreen, setCurrentScreen] = useState('camera'); // 'camera', 'countdown', 'loading', 'result'
-    const [countdown, setCountdown] = useState(8);
+    const [countdown, setCountdown] = useState(5);
     const [showShutter, setShowShutter] = useState(false);
     const [capturedVideoOnly, setCapturedVideoOnly] = useState(null); // Store video-only capture
     const [capturedMaskData, setCapturedMaskData] = useState([]); // Store mask positions for result
@@ -858,7 +858,7 @@ const PhotoBooth = () => {
     // Start photo capture with countdown
     const startPhotoCapture = () => {
         setCurrentScreen('countdown');
-        setCountdown(8);
+        setCountdown(5);
         startCountdown();
     };
 
@@ -881,34 +881,95 @@ const PhotoBooth = () => {
         }, 1000);
     };
 
-    // Capture screenshot - simple method that works, then flip video in result
+    // Capture screenshot - directly capture canvas with overlays
     const capturePhoto = async () => {
         setCurrentScreen('loading');
 
         try {
-            console.log('📸 Starting simple capture...');
+            console.log('📸 Starting direct canvas capture...');
 
-            if (!captureAreaRef.current) {
-                console.error('❌ Capture area ref is null!');
-                throw new Error('Capture area not found');
+            if (!canvasRef.current || !captureAreaRef.current) {
+                console.error('❌ Canvas or capture area ref is null!');
+                throw new Error('Canvas or capture area not found');
             }
 
-            // Get the capture area element and its displayed size
+            // Get the canvas and capture area elements
+            const canvas = canvasRef.current;
             const captureArea = captureAreaRef.current;
-            const rect = captureArea.getBoundingClientRect();
             
-            // Capture with a fixed scale to ensure consistency
-            const canvas = await html2canvas(captureArea, {
-                useCORS: true,
-                allowTaint: true,
-                scale: 1,
-                logging: false,
-                width: rect.width,
-                height: rect.height,
-                foreignObjectRendering: false
-            });
+            // Create a new canvas for the final composite
+            const compositeCanvas = document.createElement('canvas');
+            const ctx = compositeCanvas.getContext('2d');
+            
+            // Set canvas size to match the displayed video canvas
+            compositeCanvas.width = canvas.width;
+            compositeCanvas.height = canvas.height;
+            
+            // Draw the mirrored video content
+            ctx.drawImage(canvas, 0, 0);
+            
+            // Get canvas display rect for mask positioning
+            const canvasRect = canvas.getBoundingClientRect();
+            const captureRect = captureArea.getBoundingClientRect();
+            
+            // Draw masks on top
+            for (const faceData of smoothFaces) {
+                try {
+                    // Load mask image
+                    const maskImg = new Image();
+                    const maskSrc = `/mask/mask${faceData.maskNumber}.png`;
+                    
+                    await new Promise((resolve, reject) => {
+                        maskImg.onload = resolve;
+                        maskImg.onerror = reject;
+                        maskImg.src = maskSrc;
+                    });
+                    
+                    // Calculate mask position relative to canvas
+                    const scaleX = compositeCanvas.width / canvasRect.width;
+                    const scaleY = compositeCanvas.height / canvasRect.height;
+                    
+                    const maskX = faceData.x * scaleX;
+                    const maskY = faceData.y * scaleY;
+                    const maskSize = faceData.size * Math.min(scaleX, scaleY);
+                    
+                    // Save context for rotation
+                    ctx.save();
+                    ctx.translate(maskX, maskY);
+                    ctx.rotate((faceData.rotation * Math.PI) / 180);
+                    ctx.globalAlpha = 0.95;
+                    
+                    // Draw mask centered at position
+                    ctx.drawImage(
+                        maskImg,
+                        -maskSize / 2,
+                        -maskSize / 2,
+                        maskSize,
+                        maskSize
+                    );
+                    
+                    ctx.restore();
+                } catch (maskError) {
+                    console.warn(`Failed to load mask${faceData.maskNumber}:`, maskError);
+                }
+            }
+            
+            // Add frame overlay if it exists
+            try {
+                const frameImg = new Image();
+                await new Promise((resolve, reject) => {
+                    frameImg.onload = resolve;
+                    frameImg.onerror = reject;
+                    frameImg.src = '/frame.png';
+                });
+                
+                // Draw frame at full canvas size
+                ctx.drawImage(frameImg, 0, 0, compositeCanvas.width, compositeCanvas.height);
+            } catch (frameError) {
+                console.warn('Frame overlay not found or failed to load:', frameError);
+            }
 
-            const imageData = canvas.toDataURL('image/png');
+            const imageData = compositeCanvas.toDataURL('image/png');
             setCapturedImage(imageData);
 
             // Also set as video-only for the new result display
@@ -917,7 +978,7 @@ const PhotoBooth = () => {
             // Store current mask data for overlay in result (empty for now since we capture everything)
             setCapturedMaskData([]);
 
-            console.log('📸 Simple capture successful!');
+            console.log('📸 Direct canvas capture successful!');
 
             // Upload to Firebase (but don't let it block the UI)
             uploadToFirebase(imageData).catch(error => {
