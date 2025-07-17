@@ -893,12 +893,19 @@ const PhotoBooth = () => {
                 throw new Error('Capture area not found');
             }
 
-            // Simple working capture - just like before
-            const canvas = await html2canvas(captureAreaRef.current, {
+            // Get the capture area element and its displayed size
+            const captureArea = captureAreaRef.current;
+            const rect = captureArea.getBoundingClientRect();
+            
+            // Capture with a fixed scale to ensure consistency
+            const canvas = await html2canvas(captureArea, {
                 useCORS: true,
                 allowTaint: true,
                 scale: 1,
-                logging: false
+                logging: false,
+                width: rect.width,
+                height: rect.height,
+                foreignObjectRendering: false
             });
 
             const imageData = canvas.toDataURL('image/png');
@@ -1480,7 +1487,8 @@ const PhotoBooth = () => {
                             style={{
                                 maxWidth: '450px',
                                 width: '100%',
-                                height: 'auto',
+                                aspectRatio: '16/9',
+                                objectFit: 'cover',
                                 border: '8px solid #FFFFFF',
                                 borderRadius: '25px',
                                 boxShadow: '0 15px 40px rgba(238, 154, 191, 0.4), 0 0 0 4px #EE9ABF, 0 0 25px rgba(238, 154, 191, 0.3)'
