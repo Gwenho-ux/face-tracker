@@ -1,0 +1,115 @@
+.App {
+  text-align: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Mobile-friendly styles */
+@media (max-width: 768px) {
+  .App {
+    padding: 10px;
+  }
+  
+  /* Make video container responsive */
+  div[style*="width: 640px"] {
+    width: 100% !important;
+    max-width: 640px !important;
+    height: auto !important;
+    aspect-ratio: 4/3 !important;
+  }
+  
+  /* Adjust button sizes for mobile */
+  button {
+    font-size: 16px !important;
+    padding: 12px 20px !important;
+    margin: 5px !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .App {
+    background: white !important;
+    color: black !important;
+  }
+  
+  /* Hide everything except print content */
+  body * {
+    visibility: hidden;
+  }
+  
+  .print-only, .print-only * {
+    visibility: visible !important;
+    display: block !important;
+  }
+  
+  .print-only {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    page-break-inside: avoid;
+  }
+  
+  /* Ensure images print well */
+  .print-only img {
+    max-width: 100% !important;
+    height: auto !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  
+  /* QR code styling for print */
+  .print-only canvas {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  
+  /* Remove margins for print */
+  @page {
+    margin: 0.5in;
+  }
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Button hover effects */
+button:hover:not(:disabled) {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+  transition: all 0.2s ease !important;
+}
+
+button:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.6 !important;
+}
+
+/* Loading animation */
+@keyframes pulse {
+  0% { opacity: 0.8; }
+  50% { opacity: 1; }
+  100% { opacity: 0.8; }
+}
+
+button:disabled {
+  animation: pulse 1.5s infinite;
+}
